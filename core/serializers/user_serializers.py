@@ -8,7 +8,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import UserProfile, Subscription
+from core.models import UserProfile, Subscription
 
 
 # ──────────────────────────────────────────────
