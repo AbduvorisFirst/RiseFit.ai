@@ -17,7 +17,6 @@ from rest_framework.views import APIView
 
 from core.models import Influencer
 from core.models import Subscription
-from .stripe_webhook import stripe_webhook  # реэкспорт для urls.py
 
 logger = logging.getLogger(__name__)
 

@@ -5,10 +5,12 @@ users/urls.py
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import user_views, influencer_views, workout_views, nutrition_views, stripe_webhook
+from .views import user_views, influencer_views, workout_views, nutrition_views
+from .payments import stripe_webhook
 from .views.CreateCheckSession import CreateCheckoutSessionView
 
 urlpatterns = [
+
     ######################################### users ############################################################
 
     # Auth
@@ -80,5 +82,5 @@ urlpatterns = [
     ################################################  payment  #########################################################################
 
     path('api/payments/create-checkout/', CreateCheckoutSessionView.as_view()),
-    path('api/payments/stripe/webhook/',  stripe_webhook.stripe_webhook),
+    path('api/payments/stripe/webhook/', stripe_webhook.stripe_webhook),
 ]
