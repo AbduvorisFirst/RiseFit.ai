@@ -1,35 +1,19 @@
 """
-risefit/settings.py
-Production-ready настройки для RiseFit.ai
-Используй .env файл для секретов (python-decouple или django-environ)
+risefit/settings.py  — FINAL MVP
 """
 
-import environ
 from pathlib import Path
-import os
-
-# Инициализируем environ
-env = environ.Env(
-    # Укажи значения по умолчанию (необязательно)
-    DEBUG=(bool, False)
-)
-
-# Указываем путь к твоему .env файлу
-BASE_DIR = Path(__file__).resolve().parent.parent
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-
-
+from datetime import timedelta
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ─── БЕЗОПАСНОСТЬ ─────────────────────────────
-# В продакшене: SECRET_KEY из переменной окружения!
-SECRET_KEY = os.environ.get('SECRET_KEY', '')
-DEBUG      = os.environ.get('DEBUG', 'True') == 'True'
+# ── Security ─────────────────────────────────
+SECRET_KEY     = config('SECRET_KEY')
+DEBUG          = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS  = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
-# ─── ПРИЛОЖЕНИЯ ───────────────────────────────
+# ── Apps ─────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -38,18 +22,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Сторонние
+    # Third-party
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
-    # Наши приложения
+    # Project apps
     'core',
+    'users',
+    'influencers',
+    'workouts',
+    'nutrition',
+    'payments',
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',          # CORS — первым!
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,14 +48,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'src.urls'
-WSGI_APPLICATION = 'src.wsgi.application'
+ROOT_URLCONF = 'risefit.urls'
 
 TEMPLATES = [{
-    'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    'DIRS':    [],
+    'BACKEND':  'django.template.backends.django.DjangoTemplates',
+    'DIRS':     [],
     'APP_DIRS': True,
-    'OPTIONS': {
+    'OPTIONS':  {
         'context_processors': [
             'django.template.context_processors.debug',
             'django.template.context_processors.request',
@@ -76,27 +64,21 @@ TEMPLATES = [{
     },
 }]
 
-# ─── БАЗА ДАННЫХ ──────────────────────────────
+WSGI_APPLICATION = 'risefit.wsgi.application'
 
+# ── Database ─────────────────────────────────
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE':   'django.db.backends.postgresql',
+        'NAME':     config('DB_NAME',     default='risefit_db'),
+        'USER':     config('DB_USER',     default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
+        'HOST':     config('DB_HOST',     default='localhost'),
+        'PORT':     config('DB_PORT',     default='5432'),
     }
 }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE':   'django.db.backends.postgresql',
-#         'NAME':     os.environ.get('DB_NAME',     'risefit_db'),
-#         'USER':     os.environ.get('DB_USER',     'postgres'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
-#         'HOST':     os.environ.get('DB_HOST',     'localhost'),
-#         'PORT':     os.environ.get('DB_PORT',     '5432'),
-#     }
-# }
-
-# ─── DJANGO REST FRAMEWORK ────────────────────
+# ── REST Framework ────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -104,51 +86,64 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_PAGINATION_CLASS':  'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
 }
 
-# ─── JWT НАСТРОЙКИ ────────────────────────────
-from datetime import timedelta
-
+# ── JWT ───────────────────────────────────────
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME':  timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    'ROTATE_REFRESH_TOKENS':  True,
+    'ACCESS_TOKEN_LIFETIME':    timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME':   timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS':    True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'ALGORITHM': 'HS256',
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    'ALGORITHM':                'HS256',
+    'AUTH_HEADER_TYPES':        ('Bearer',),
 }
 
-# ─── CORS (для Flutter / веб-клиента) ─────────
+# ── CORS ─────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8080",
-    # Добавь свой домен в продакшене
 ]
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # Только в режиме разработки!
+CORS_ALLOW_ALL_ORIGINS = DEBUG   # dev only
 
+# ── Celery (Redis) ────────────────────────────
+CELERY_BROKER_URL     = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT  = ['json']
+CELERY_TASK_SERIALIZER = 'json'
 
+# ── Email ─────────────────────────────────────
+# Development: prints to console
+# Production:  set EMAIL_BACKEND to smtp and add SendGrid/Mailgun keys
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST          = config('EMAIL_HOST',     default='smtp.sendgrid.net')
+EMAIL_PORT          = config('EMAIL_PORT',     default=587,   cast=int)
+EMAIL_USE_TLS       = config('EMAIL_USE_TLS',  default=True,  cast=bool)
+EMAIL_HOST_USER     = config('EMAIL_HOST_USER', default='apikey')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='RiseFit <hello@risefit.ai>')
 
-
-
-GEMINI_API_KEY        = env('GEMINI_API_KEY')      # Google AI Studio
-STRIPE_SECRET_KEY     = env('STRIPE_SECRET_KEY')
-STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET')
+# ── Third-party keys ──────────────────────────
+GEMINI_API_KEY         = config('GEMINI_API_KEY',         default='')
+STRIPE_SECRET_KEY      = config('STRIPE_SECRET_KEY',      default='')
+STRIPE_WEBHOOK_SECRET  = config('STRIPE_WEBHOOK_SECRET',  default='')
 SUBSCRIPTION_PRICE_USD = 15.00
 
-# ─── МЕДИАФАЙЛЫ ───────────────────────────────
-MEDIA_URL  = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
+# ── Media & Static ────────────────────────────
+MEDIA_URL   = '/media/'
+MEDIA_ROOT  = BASE_DIR / 'media'
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# ─── ПРОЧЕЕ ───────────────────────────────────
-LANGUAGE_CODE = 'ru-ru'
+# ── Internationalization ──────────────────────
+LANGUAGE_CODE = 'en-us'
 TIME_ZONE     = 'UTC'
 USE_I18N      = True
 USE_TZ        = True

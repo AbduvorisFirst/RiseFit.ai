@@ -16,8 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+from core.payments.stripe_webhook import stripe_webhook
+from core.payments.CreateCheckSession import CreateCheckoutSessionView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("", include('core.urls') )
-]
+                  path('admin/', admin.site.urls),
+                  path('api/', include('core.urls')),   # ← закрывающая скобка!
+                  path('api/payments/create-checkout/', CreateCheckoutSessionView.as_view(), name='create_checkout'),
+                  path('api/payments/stripe/webhook/',  stripe_webhook, name='stripe_webhook'),
+
+              ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

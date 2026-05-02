@@ -2,7 +2,7 @@
 workouts/ai_generator.py
 AI-генератор персональных программ тренировок.
 Использует правила инфлюенсера + профиль пользователя.
-AI советы: Google Gemini (gemini-1.5-flash).
+AI советы: Google Gemini (gemini-2.5-flash-lite).
 
 Установи зависимость:
     pip install google-generativeai
